@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { BrandLogo } from "./logo";
 import { Notifications } from "./notifications";
 import { LanguageToggle, useLanguage } from "./language-provider";
+import { createClient } from "@/lib/supabase/client";
+import { isAuthConfigured } from "@/lib/supabase/config";
 import type { Dict } from "@/lib/i18n";
 
 const NAV = [
@@ -17,10 +19,18 @@ const NAV = [
   { href: "/hall-of-fame", key: "hallOfFame" },
 ] as const satisfies { href: string; key: keyof Dict["nav"] }[];
 
-export function SiteHeader() {
+export function SiteHeader({ userEmail }: { userEmail: string | null }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const { t } = useLanguage();
+
+  async function logout() {
+    if (isAuthConfigured()) await createClient().auth.signOut();
+    setOpen(false);
+    router.push("/");
+    router.refresh();
+  }
 
   return (
     <header className="sticky top-0 z-50 border-b border-line/70 bg-ink/80 backdrop-blur-xl">
@@ -65,18 +75,38 @@ export function SiteHeader() {
             >
               {t.header.organizer}
             </Link>
-            <Link
-              href="/login"
-              className="text-sm font-medium text-muted transition-colors hover:text-fg"
-            >
-              {t.header.login}
-            </Link>
-            <Link
-              href="/register"
-              className="inline-flex h-9 items-center rounded-full bg-gradient-to-b from-gold-bright to-gold px-4 text-sm font-semibold text-ink transition-transform hover:-translate-y-0.5"
-            >
-              {t.header.register}
-            </Link>
+            {userEmail ? (
+              <>
+                <span
+                  title={userEmail}
+                  className="max-w-[160px] truncate text-sm font-medium text-fg"
+                >
+                  {userEmail}
+                </span>
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="text-sm font-medium text-muted transition-colors hover:text-fg"
+                >
+                  Log out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="text-sm font-medium text-muted transition-colors hover:text-fg"
+                >
+                  {t.header.login}
+                </Link>
+                <Link
+                  href="/register"
+                  className="inline-flex h-9 items-center rounded-full bg-gradient-to-b from-gold-bright to-gold px-4 text-sm font-semibold text-ink transition-transform hover:-translate-y-0.5"
+                >
+                  {t.header.register}
+                </Link>
+              </>
+            )}
           </div>
 
           <button
@@ -115,22 +145,37 @@ export function SiteHeader() {
             </span>
             <LanguageToggle />
           </div>
-          <div className="mt-3 flex gap-3">
-            <Link
-              href="/login"
-              onClick={() => setOpen(false)}
-              className="flex h-10 flex-1 items-center justify-center rounded-full border border-line-strong text-sm font-semibold"
-            >
-              {t.header.login}
-            </Link>
-            <Link
-              href="/register"
-              onClick={() => setOpen(false)}
-              className="flex h-10 flex-1 items-center justify-center rounded-full bg-gold text-sm font-semibold text-ink"
-            >
-              {t.header.register}
-            </Link>
-          </div>
+          {userEmail ? (
+            <div className="mt-3 flex items-center justify-between gap-3 px-1">
+              <span className="min-w-0 flex-1 truncate text-sm font-medium text-fg">
+                {userEmail}
+              </span>
+              <button
+                type="button"
+                onClick={logout}
+                className="flex h-10 items-center justify-center rounded-full border border-line-strong px-4 text-sm font-semibold"
+              >
+                Log out
+              </button>
+            </div>
+          ) : (
+            <div className="mt-3 flex gap-3">
+              <Link
+                href="/login"
+                onClick={() => setOpen(false)}
+                className="flex h-10 flex-1 items-center justify-center rounded-full border border-line-strong text-sm font-semibold"
+              >
+                {t.header.login}
+              </Link>
+              <Link
+                href="/register"
+                onClick={() => setOpen(false)}
+                className="flex h-10 flex-1 items-center justify-center rounded-full bg-gold text-sm font-semibold text-ink"
+              >
+                {t.header.register}
+              </Link>
+            </div>
+          )}
         </nav>
       )}
     </header>

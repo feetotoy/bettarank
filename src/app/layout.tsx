@@ -5,6 +5,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { LanguageProvider } from "@/components/language-provider";
 import { getLocale } from "@/lib/i18n-server";
+import { getCurrentUser } from "@/lib/auth";
 
 const display = Sora({
   variable: "--font-display",
@@ -61,6 +62,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const locale = await getLocale();
+  const user = await getCurrentUser();
   return (
     <html
       lang={locale === "fil" ? "fil" : "en"}
@@ -68,7 +70,7 @@ export default async function RootLayout({
     >
       <body className="bg-arena flex min-h-full flex-col">
         <LanguageProvider initialLocale={locale}>
-          <SiteHeader />
+          <SiteHeader userEmail={user?.email ?? null} />
           <main className="flex-1">{children}</main>
           <SiteFooter />
         </LanguageProvider>
