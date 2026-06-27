@@ -14,6 +14,7 @@ export function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next") || "/";
+  const denied = params.get("denied");
   const configured = isAuthConfigured();
 
   const [mode, setMode] = useState<Mode>("signin");
@@ -86,6 +87,17 @@ export function LoginForm() {
           <Link href="/" className="mt-1 block font-semibold text-gold">
             Continue to site →
           </Link>
+        </div>
+      )}
+
+      {denied && (
+        <div className="mt-6 rounded-xl border border-danger/40 bg-danger/[0.06] px-4 py-3 text-sm text-danger">
+          Your account doesn&apos;t have access to the{" "}
+          {denied === "super-admin" ? "Super Admin" : "Organizer"} console. Sign
+          in with an authorized account
+          {denied === "super-admin"
+            ? "."
+            : " — or ask the Super Admin for organizer access."}
         </div>
       )}
 

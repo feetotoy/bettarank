@@ -1,9 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { isAuthConfigured } from "./config";
-
-// Routes that require a signed-in user (only enforced when auth is configured).
-const PROTECTED = ["/admin", "/super-admin"];
+import { canAccessAdmin, canAccessSuperAdmin } from "@/lib/roles";
 
 /**
  * Refreshes the Supabase auth session cookie on each request, and redirects
@@ -40,14 +38,29 @@ export async function updateSession(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     const path = request.nextUrl.pathname;
-    const isProtected = PROTECTED.some(
-      (p) => path === p || path.startsWith(p + "/"),
-    );
-    if (!user && isProtected) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/login";
-      url.searchParams.set("next", path);
-      return NextResponse.redirect(url);
+    const wantsSuper =
+      path === "/super-admin" || path.startsWith("/super-admin/");
+    const wantsAdmin = path === "/admin" || path.startsWith("/admin/");
+
+    if (wantsSuper || wantsAdmin) {
+      // Not signed in → send to login (return here after).
+      if (!user) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/login";
+        url.searchParams.set("next", path);
+        return NextResponse.redirect(url);
+      }
+      // Signed in but lacks the role → bounce to login with a notice.
+      const allowed = wantsSuper
+        ? canAccessSuperAdmin(user.email)
+        : canAccessAdmin(user.email);
+      if (!allowed) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/login";
+        url.searchParams.set("next", path);
+        url.searchParams.set("denied", wantsSuper ? "super-admin" : "admin");
+        return NextResponse.redirect(url);
+      }
     }
   } catch {
     // Network/config hiccup — don't break the site, just continue.
