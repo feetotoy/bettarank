@@ -1,0 +1,12 @@
+# Netlify configuration for the FINOY Next.js app.
+# Netlify's Next.js Runtime (auto-installed via the plugin below) handles SSR,
+# server components, route handlers, and image optimization — no extra setup.
+
+[build]
+  command = "npm run build"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
