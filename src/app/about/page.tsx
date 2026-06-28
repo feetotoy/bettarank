@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { platformStats, compactNumber } from "@/lib/data";
+import { compactNumber } from "@/lib/data";
+import { getPlatformStats } from "@/lib/stats";
 import { Container, Card, Button, SectionHeading } from "@/components/ui";
 import { BrandLogo } from "@/components/logo";
 
@@ -45,7 +46,8 @@ const FOR_ORGANIZERS = [
   "Real-time announcements",
 ];
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const platformStats = await getPlatformStats();
   return (
     <>
       {/* ---------------------------------------------------------- HERO */}

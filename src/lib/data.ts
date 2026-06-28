@@ -1760,15 +1760,9 @@ export const hallOfFame2026: HofEntry[] = [
 
 /* ------------------------------------------------------------------ */
 /*  Platform statistics                                                */
+/*  (Derived live from the real data — see getPlatformStats in         */
+/*   src/lib/stats.ts. No hardcoded headline numbers.)                 */
 /* ------------------------------------------------------------------ */
-
-export const platformStats = {
-  competitions: 184,
-  fishRegistered: 28640,
-  breeders: 3120,
-  teams: 96,
-  titlesAwarded: 9420,
-};
 
 export const sponsors = [
   "AquaPro PH",

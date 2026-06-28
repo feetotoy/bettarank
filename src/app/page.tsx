@@ -1,13 +1,13 @@
 import Link from "next/link";
 import {
-  competitions,
   playerRankings,
   playerMedals,
   hallOfFame2026,
-  platformStats,
   sponsors,
   compactNumber,
 } from "@/lib/data";
+import { getCompetitions } from "@/lib/db/competitions";
+import { getPlatformStats } from "@/lib/stats";
 import {
   Container,
   SectionHeading,
@@ -23,6 +23,8 @@ import { getDict } from "@/lib/i18n";
 
 export default async function HomePage() {
   const t = getDict(await getLocale()).hero;
+  const competitions = await getCompetitions();
+  const platformStats = await getPlatformStats(competitions);
   const upcoming = competitions
     .filter((c) => c.status !== "completed")
     .slice(0, 3);
