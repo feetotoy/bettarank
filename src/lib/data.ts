@@ -1123,6 +1123,50 @@ export const pendingTeams: PendingTeam[] = [
 ];
 
 /* ------------------------------------------------------------------ */
+/*  Organizer access requests                                          */
+/*                                                                     */
+/*  Every account starts as a regular user. To run shows they submit   */
+/*  an "apply to become an Organizer" request; the Super Admin reviews  */
+/*  it and, once approved, the account unlocks the Organizer Console.   */
+/* ------------------------------------------------------------------ */
+
+export interface OrganizerRequest {
+  id: string;
+  name: string;
+  email: string;
+  contact: string;
+  organization?: string;
+  region?: Region;
+  message?: string;
+  submitted: string; // relative label (mock)
+}
+
+export const organizerRequests: OrganizerRequest[] = [
+  {
+    id: "or-marites-delacruz",
+    name: "Marites dela Cruz",
+    email: "marites.delacruz@gmail.com",
+    contact: "0917 555 2048",
+    organization: "Cavite Betta Society",
+    region: "Luzon",
+    message:
+      "We host two local shows a year in Imus and want to run them on FINOY for online registration and judging.",
+    submitted: "1 day ago",
+  },
+  {
+    id: "or-jun-tabios",
+    name: "Jun Tabios",
+    email: "jun.tabios@yahoo.com",
+    contact: "0928 471 9930",
+    organization: "Negros Aqua Hobbyists",
+    region: "Visayas",
+    message:
+      "Planning our first sanctioned Plakat open this October in Bacolod.",
+    submitted: "4 days ago",
+  },
+];
+
+/* ------------------------------------------------------------------ */
 /*  Per-show standings (deterministic, derived from national pools)    */
 /*                                                                     */
 /*  Until past results are fully encoded, each show derives its own    */

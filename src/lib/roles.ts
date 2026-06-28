@@ -103,7 +103,10 @@ export function requiredAccessFor(
 ): "super-admin" | "admin" | "handler" | null {
   if (path === "/super-admin" || path.startsWith("/super-admin/"))
     return "super-admin";
-  if (path === "/admin" || path.startsWith("/admin/")) return "admin";
+  // /admin (exact) is open to any signed-in user — the page shows the Organizer
+  // Console to approved organizers and an "apply to be an organizer" form to
+  // everyone else. The action pages below stay organizer-only.
+  if (path.startsWith("/admin/")) return "admin";
   if (path === "/handlers/me" || path.startsWith("/handlers/me/"))
     return "handler";
   return null;

@@ -5,10 +5,12 @@ import {
   accounts as seedAccounts,
   teamRankings,
   pendingTeams,
+  organizerRequests,
   ACCOUNT_ROLES,
   TEAM_ROLES,
   type AccountRole,
   type PendingTeam,
+  type OrganizerRequest,
 } from "@/lib/data";
 
 type ReviewStatus = "pending" | "approved" | "rejected";
@@ -58,6 +60,14 @@ export function SuperAdminConsole() {
   );
   const pendingTeamCount = pendingTeams.filter(
     (t) => (teamReview[t.id] ?? "pending") === "pending",
+  ).length;
+
+  // Organizer access requests awaiting review (all start pending).
+  const [orgReview, setOrgReview] = useState<Record<string, ReviewStatus>>(() =>
+    Object.fromEntries(organizerRequests.map((r) => [r.id, "pending"])),
+  );
+  const pendingOrgCount = organizerRequests.filter(
+    (r) => (orgReview[r.id] ?? "pending") === "pending",
   ).length;
 
   function toggleRole(id: string, role: AccountRole) {
@@ -124,9 +134,9 @@ export function SuperAdminConsole() {
           { label: "Accounts", value: seedAccounts.length },
           { label: "Handlers", value: count("Handler") },
           { label: "Organizers", value: count("Organizer") },
-          { label: "Team Leaders", value: count("Team Leader") },
           { label: "Breeders", value: count("Breeder") },
           { label: "Pending Teams", value: pendingTeamCount },
+          { label: "Organizer Requests", value: pendingOrgCount },
         ].map((s) => (
           <div
             key={s.label}
@@ -142,8 +152,50 @@ export function SuperAdminConsole() {
         ))}
       </div>
 
-      {/* Team registrations awaiting approval */}
+      {/* Organizer access requests awaiting approval */}
       <div className="mt-10">
+        <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-display text-xl font-bold">
+            Organizer access requests
+          </h2>
+          <span
+            className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+              pendingOrgCount > 0
+                ? "border-gold/40 bg-gold/10 text-gold"
+                : "border-line bg-surface-2 text-faint"
+            }`}
+          >
+            {pendingOrgCount} awaiting review
+          </span>
+        </div>
+        <p className="mb-4 text-sm text-muted">
+          Regular users who applied to run shows. Approving grants the{" "}
+          <span className="text-gold">Organizer</span> role — they unlock the
+          Organizer Console to create competitions, manage entries, and publish
+          results.
+        </p>
+        {organizerRequests.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-line py-8 text-center text-sm text-faint">
+            No organizer requests right now.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {organizerRequests.map((r) => (
+              <OrganizerRequestCard
+                key={r.id}
+                request={r}
+                status={orgReview[r.id] ?? "pending"}
+                onSet={(s) =>
+                  setOrgReview((prev) => ({ ...prev, [r.id]: s }))
+                }
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Team registrations awaiting approval */}
+      <div className="mt-12">
         <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-display text-xl font-bold">
             Pending team registrations
@@ -435,6 +487,112 @@ function PendingTeamCard({
         <p className="mt-3 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
           Registration declined — the captain has been notified to revise and
           resubmit.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function OrganizerRequestCard({
+  request,
+  status,
+  onSet,
+}: {
+  request: OrganizerRequest;
+  status: ReviewStatus;
+  onSet: (s: ReviewStatus) => void;
+}) {
+  return (
+    <div
+      className={`rounded-2xl border p-5 transition-colors ${
+        status === "approved"
+          ? "border-success/40 bg-success/[0.04]"
+          : status === "rejected"
+            ? "border-danger/40 bg-danger/[0.04]"
+            : "border-line bg-surface/60"
+      }`}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-display text-lg font-bold text-fg">
+              {request.name}
+            </span>
+            {request.organization && (
+              <span className="rounded-full border border-line bg-surface-2 px-2.5 py-0.5 text-[11px] font-semibold text-muted">
+                {request.organization}
+              </span>
+            )}
+            {request.region && (
+              <span className="rounded-full border border-line bg-surface-2 px-2.5 py-0.5 text-[11px] font-medium text-faint">
+                {request.region}
+              </span>
+            )}
+            <span className="text-xs text-faint">
+              · submitted {request.submitted}
+            </span>
+          </div>
+          <div className="mt-1.5 text-xs text-muted">
+            <span className="text-fg">{request.email}</span> · {request.contact}
+          </div>
+          {request.message && (
+            <p className="mt-2 max-w-2xl text-sm text-muted">
+              “{request.message}”
+            </p>
+          )}
+        </div>
+
+        <div className="shrink-0">
+          {status === "pending" ? (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => onSet("approved")}
+                className="inline-flex h-9 items-center rounded-full bg-gradient-to-b from-gold-bright to-gold px-4 text-xs font-semibold text-ink"
+              >
+                ✓ Approve
+              </button>
+              <button
+                type="button"
+                onClick={() => onSet("rejected")}
+                className="inline-flex h-9 items-center rounded-full border border-line-strong px-4 text-xs font-semibold text-muted transition-colors hover:border-danger/50 hover:text-danger"
+              >
+                ✕ Decline
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span
+                className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                  status === "approved"
+                    ? "border-success/40 bg-success/10 text-success"
+                    : "border-danger/40 bg-danger/10 text-danger"
+                }`}
+              >
+                {status === "approved" ? "✓ Approved" : "✕ Declined"}
+              </span>
+              <button
+                type="button"
+                onClick={() => onSet("pending")}
+                className="text-xs font-semibold text-faint hover:text-fg"
+              >
+                Undo
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {status === "approved" && (
+        <p className="mt-3 rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-xs text-success">
+          Organizer role granted — {request.name} can now open the Organizer
+          Console and create competitions.
+        </p>
+      )}
+      {status === "rejected" && (
+        <p className="mt-3 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
+          Request declined — the applicant has been notified. They keep their
+          regular account.
         </p>
       )}
     </div>

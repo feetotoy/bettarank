@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import {
   formatDate,
   peso,
@@ -7,7 +8,9 @@ import {
   PLATFORM_FEE_LABEL,
 } from "@/lib/data";
 import { getCompetitions } from "@/lib/db/competitions";
+import { getSession } from "@/lib/session";
 import { Container, Card, LevelBadge, StatusBadge } from "@/components/ui";
+import { RequestOrganizerAccess } from "./request-organizer";
 
 export const metadata: Metadata = {
   title: "Organizer Console",
@@ -16,6 +19,23 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminPage() {
+  const session = await getSession();
+  if (!session.loggedIn || !session.role) {
+    redirect("/login?next=/admin");
+  }
+
+  // Only approved Organizers (and the Super Admin) get the console. Every other
+  // account is a regular user, so they see the "apply to be an organizer" form.
+  const isOrganizer =
+    session.role === "organizer" || session.role === "super-admin";
+  if (!isOrganizer) {
+    return (
+      <Container className="py-12">
+        <RequestOrganizerAccess email={session.email} demo={session.demo} />
+      </Container>
+    );
+  }
+
   // Demo: treat the signed-in organizer as owner of these shows.
   const myShows = await getCompetitions();
   const totalEntries = myShows.reduce((sum, c) => sum + c.entries, 0);
