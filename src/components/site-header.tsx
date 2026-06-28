@@ -8,6 +8,8 @@ import { Notifications } from "./notifications";
 import { LanguageToggle, useLanguage } from "./language-provider";
 import { createClient } from "@/lib/supabase/client";
 import { isAuthConfigured } from "@/lib/supabase/config";
+import { deleteCookie } from "@/lib/cookies";
+import { ROLE_ICON, ROLE_LABEL, type AppRole } from "@/lib/roles";
 import type { Dict } from "@/lib/i18n";
 
 const NAV = [
@@ -19,7 +21,15 @@ const NAV = [
   { href: "/hall-of-fame", key: "hallOfFame" },
 ] as const satisfies { href: string; key: keyof Dict["nav"] }[];
 
-export function SiteHeader({ userEmail }: { userEmail: string | null }) {
+export function SiteHeader({
+  userEmail,
+  role,
+  demo,
+}: {
+  userEmail: string | null;
+  role: AppRole | null;
+  demo: boolean;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -27,10 +37,19 @@ export function SiteHeader({ userEmail }: { userEmail: string | null }) {
 
   async function logout() {
     if (isAuthConfigured()) await createClient().auth.signOut();
+    else deleteCookie("finoy-role");
     setOpen(false);
     router.push("/");
     router.refresh();
   }
+
+  const RoleBadge = role ? (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/40 bg-gold/10 px-2.5 py-1 text-xs font-semibold text-gold">
+      <span aria-hidden>{ROLE_ICON[role]}</span>
+      {ROLE_LABEL[role]}
+      {demo && <span className="text-[10px] font-normal text-gold/70">demo</span>}
+    </span>
+  ) : null;
 
   return (
     <header className="sticky top-0 z-50 border-b border-line/70 bg-ink/80 backdrop-blur-xl">
@@ -75,14 +94,11 @@ export function SiteHeader({ userEmail }: { userEmail: string | null }) {
             >
               {t.header.organizer}
             </Link>
-            {userEmail ? (
+            {role ? (
               <>
-                <span
-                  title={userEmail}
-                  className="max-w-[160px] truncate text-sm font-medium text-fg"
-                >
-                  {userEmail}
-                </span>
+                <Link href="/account" className="hover:opacity-80">
+                  {RoleBadge}
+                </Link>
                 <button
                   type="button"
                   onClick={logout}
@@ -145,15 +161,24 @@ export function SiteHeader({ userEmail }: { userEmail: string | null }) {
             </span>
             <LanguageToggle />
           </div>
-          {userEmail ? (
+          {role ? (
             <div className="mt-3 flex items-center justify-between gap-3 px-1">
-              <span className="min-w-0 flex-1 truncate text-sm font-medium text-fg">
-                {userEmail}
-              </span>
+              <Link
+                href="/account"
+                onClick={() => setOpen(false)}
+                className="min-w-0"
+              >
+                {RoleBadge}
+                {!demo && userEmail && (
+                  <span className="mt-1 block truncate text-xs text-muted">
+                    {userEmail}
+                  </span>
+                )}
+              </Link>
               <button
                 type="button"
                 onClick={logout}
-                className="flex h-10 items-center justify-center rounded-full border border-line-strong px-4 text-sm font-semibold"
+                className="flex h-10 shrink-0 items-center justify-center rounded-full border border-line-strong px-4 text-sm font-semibold"
               >
                 Log out
               </button>

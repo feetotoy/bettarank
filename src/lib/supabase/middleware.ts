@@ -1,69 +1,77 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { isAuthConfigured } from "./config";
-import { canAccessAdmin, canAccessSuperAdmin } from "@/lib/roles";
+import {
+  isAppRole,
+  requiredAccessFor,
+  roleForEmail,
+  roleSatisfies,
+  type AppRole,
+} from "@/lib/roles";
 
 /**
- * Refreshes the Supabase auth session cookie on each request, and redirects
- * unauthenticated users away from protected routes. No-ops in open/demo mode.
+ * Refreshes the Supabase auth session and enforces role-based access on
+ * /admin, /super-admin, and /handlers/me.
+ *  - Real auth: role comes from the signed-in user's email; always enforced.
+ *  - Demo mode: role comes from the `finoy-role` cookie ("Test as…"); enforced
+ *    only once a role is chosen (no cookie = open browsing).
  */
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
-  if (!isAuthConfigured()) return response;
+  const path = request.nextUrl.pathname;
+  const need = requiredAccessFor(path);
 
-  try {
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value }) =>
-              request.cookies.set(name, value),
-            );
-            response = NextResponse.next({ request });
-            cookiesToSet.forEach(({ name, value, options }) =>
-              response.cookies.set(name, value, options),
-            );
+  let role: AppRole | null = null;
+  let loggedIn = false;
+  let enforce = false;
+
+  if (isAuthConfigured()) {
+    enforce = true;
+    try {
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            getAll() {
+              return request.cookies.getAll();
+            },
+            setAll(cookiesToSet) {
+              cookiesToSet.forEach(({ name, value }) =>
+                request.cookies.set(name, value),
+              );
+              response = NextResponse.next({ request });
+              cookiesToSet.forEach(({ name, value, options }) =>
+                response.cookies.set(name, value, options),
+              );
+            },
           },
         },
-      },
-    );
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    const path = request.nextUrl.pathname;
-    const wantsSuper =
-      path === "/super-admin" || path.startsWith("/super-admin/");
-    const wantsAdmin = path === "/admin" || path.startsWith("/admin/");
-
-    if (wantsSuper || wantsAdmin) {
-      // Not signed in → send to login (return here after).
-      if (!user) {
-        const url = request.nextUrl.clone();
-        url.pathname = "/login";
-        url.searchParams.set("next", path);
-        return NextResponse.redirect(url);
-      }
-      // Signed in but lacks the role → bounce to login with a notice.
-      const allowed = wantsSuper
-        ? canAccessSuperAdmin(user.email)
-        : canAccessAdmin(user.email);
-      if (!allowed) {
-        const url = request.nextUrl.clone();
-        url.pathname = "/login";
-        url.searchParams.set("next", path);
-        url.searchParams.set("denied", wantsSuper ? "super-admin" : "admin");
-        return NextResponse.redirect(url);
-      }
+      );
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      loggedIn = !!user;
+      role = user ? roleForEmail(user.email) : null;
+    } catch {
+      // Network/config hiccup — don't break the site.
+      return response;
     }
-  } catch {
-    // Network/config hiccup — don't break the site, just continue.
+  } else {
+    // Demo mode: a role is only enforced once explicitly chosen.
+    const cookie = request.cookies.get("finoy-role")?.value;
+    role = isAppRole(cookie) ? cookie : null;
+    loggedIn = !!role;
+    enforce = !!role; // no demo role → leave everything open
   }
+
+  if (need && enforce && !roleSatisfies(role, need)) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.searchParams.set("next", path);
+    if (loggedIn) url.searchParams.set("denied", need);
+    return NextResponse.redirect(url);
+  }
+
   return response;
 }
