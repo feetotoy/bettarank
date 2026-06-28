@@ -9,9 +9,16 @@ import {
   PLATFORM_FEE_LABEL,
   fishRankings,
   registeredHandlers,
+  showStandings,
 } from "@/lib/data";
+import { awardPoints } from "@/lib/points";
 import { Container, Card, Button, LevelBadge, StatusBadge } from "@/components/ui";
 import { ShowManager, type RosterFish } from "./show-manager";
+import {
+  DownloadResults,
+  type AwardRow,
+  type RankRow,
+} from "./download-results";
 
 export function generateStaticParams() {
   return competitions.map((c) => ({ slug: c.slug }));
@@ -44,6 +51,52 @@ export default async function ManageShowPage({
   const revenue = approved * comp.entryFee;
   const fee = platformFee(revenue);
   const net = revenue - fee;
+
+  // Once a show is closed, build its downloadable results (points + ranking).
+  const closed = comp.status === "completed";
+  let awardRows: AwardRow[] = [];
+  let rankingRows: RankRow[] = [];
+  if (closed) {
+    const st = showStandings(slug);
+    const placerPoints = (label: string) =>
+      /2nd runner/i.test(label)
+        ? awardPoints("Regular", "third")
+        : /1st runner/i.test(label)
+          ? awardPoints("Regular", "second")
+          : awardPoints("Regular", "first");
+    awardRows = [
+      ...st.majorAwards.map((a) => ({
+        type: "Major Award",
+        award: a.award,
+        code: a.code,
+        owner: a.owner,
+        points: /best of show/i.test(a.award)
+          ? awardPoints("Regular", "best-of-show")
+          : awardPoints("Regular", "major"),
+      })),
+      ...st.divisionChampions.map((a) => ({
+        type: "Division Champion",
+        award: a.award,
+        code: a.code,
+        owner: a.owner,
+        points: awardPoints("Regular", "major"),
+      })),
+      ...st.placers.map((a) => ({
+        type: "Placer",
+        award: a.award,
+        code: a.code,
+        owner: a.owner,
+        points: placerPoints(a.award),
+      })),
+    ];
+    const byOwner = new Map<string, number>();
+    for (const a of awardRows)
+      byOwner.set(a.owner, (byOwner.get(a.owner) ?? 0) + a.points);
+    rankingRows = [...byOwner.entries()]
+      .map(([player, points]) => ({ player, points }))
+      .sort((a, b) => b.points - a.points)
+      .map((r, i) => ({ rank: i + 1, ...r }));
+  }
 
   // Mock benched roster for the QR tool — fish whose category is in this show.
   const roster: RosterFish[] = fishRankings
@@ -117,6 +170,29 @@ export default async function ManageShowPage({
         ({peso(comp.entryFee)} × {approved.toLocaleString()} approved entries ={" "}
         {peso(revenue)}). Your net payout after the fee is {peso(net)}.
       </p>
+
+      {/* Closed show — downloadable official results */}
+      {closed && (
+        <Card className="mt-6 flex flex-col gap-4 border-gold/40 bg-gold/[0.05] p-6 sm:flex-row sm:items-center">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 text-sm font-semibold text-gold">
+              🏁 This show is closed
+            </div>
+            <p className="mt-1 text-sm text-muted">
+              Download the official results — every award with its points, and the
+              final player ranking. Opens in Excel or Google Sheets.
+            </p>
+            <p className="mt-1 text-xs text-faint">
+              {rankingRows.length} ranked players · {awardRows.length} awards.
+            </p>
+          </div>
+          <DownloadResults
+            showName={comp.name}
+            awardRows={awardRows}
+            rankingRows={rankingRows}
+          />
+        </Card>
+      )}
 
       {/* Quick actions */}
       <div className="mt-6 flex flex-wrap gap-3">
