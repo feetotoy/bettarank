@@ -5,7 +5,8 @@ import {
   teamRankings,
   handlerRankings,
 } from "@/lib/data";
-import { Container } from "@/components/ui";
+import { Container, Card, SectionHeading } from "@/components/ui";
+import { POINTS_REFERENCE } from "@/lib/points";
 import { RankingsPortal } from "./portal";
 
 export const metadata: Metadata = {
@@ -39,6 +40,58 @@ export default function RankingsPage() {
           teams={teamRankings}
           handlers={handlerRankings}
         />
+      </div>
+
+      {/* How points are earned — the official scoring system */}
+      <div className="mt-16">
+        <SectionHeading eyebrow="Scoring" title="How points are earned" />
+        <p className="-mt-4 mb-6 max-w-2xl text-muted">
+          Every award won at a sanctioned show converts to national points. A
+          player&apos;s standing is the sum of their points; a{" "}
+          <span className="text-fg">team&apos;s</span> is the combined points of
+          its players; a <span className="text-fg">breeder&apos;s</span> is the
+          combined points of every player who tagged them.
+        </p>
+
+        <div className="grid gap-6 md:grid-cols-2">
+          {POINTS_REFERENCE.map((g) => (
+            <Card key={g.tier} className="overflow-hidden">
+              <div className="border-b border-line px-5 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-gold">
+                {g.tier} Division
+              </div>
+              {g.rows.map((r) => (
+                <div
+                  key={r.label}
+                  className="flex items-center justify-between gap-4 border-b border-line/50 px-5 py-3 last:border-0"
+                >
+                  <span className="text-sm text-fg">{r.label}</span>
+                  <span className="shrink-0 font-display text-base font-bold tabular-nums text-gold">
+                    {r.pts} pts
+                  </span>
+                </div>
+              ))}
+            </Card>
+          ))}
+        </div>
+
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <Card className="p-5">
+            <div className="flex items-center gap-2 text-sm font-semibold text-fg">
+              <span>🛡️</span> Team points
+            </div>
+            <p className="mt-1 text-sm text-muted">
+              The combined points of all the team&apos;s players.
+            </p>
+          </Card>
+          <Card className="p-5">
+            <div className="flex items-center gap-2 text-sm font-semibold text-fg">
+              <span>🧬</span> Breeder points
+            </div>
+            <p className="mt-1 text-sm text-muted">
+              The combined points of every player who tagged that breeder.
+            </p>
+          </Card>
+        </div>
       </div>
     </Container>
   );
